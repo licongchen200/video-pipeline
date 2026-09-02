@@ -112,3 +112,19 @@ def assemble(pngs, audio, cfg, work_dir, out_path, avatar_clips=None):
 
     print(f"  assemble: {len(clips)} clips concatenated")
     return total
+
+
+def embed_subtitles(video_path, srt_path):
+    """Adds the subtitle file as a real track inside the video.
+
+    The sidecar .srt is what YouTube wants; this is what makes the captions
+    toggleable for anyone who just opens the file (QuickTime, VLC). Audio
+    and video are still stream-copied, so it costs a remux, not a re-encode.
+    """
+    tmp = video_path.with_suffix(".subbed.mp4")
+    _run(["-i", str(video_path), "-i", str(srt_path),
+          "-map", "0", "-map", "1",
+          "-c", "copy", "-c:s", "mov_text",
+          "-metadata:s:s:0", "language=eng",
+          "-movflags", "+faststart", str(tmp)])
+    tmp.replace(video_path)
