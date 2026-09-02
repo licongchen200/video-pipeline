@@ -1,0 +1,18 @@
+# Generated output and caches — all reproducible from script.yaml
+build/
+out/
+script.draft.yaml
+__pycache__/
+
+# Cloned upstream model repos + their checkpoints (~2.7GB), fetched by
+# `make avatar-setup` / `make avatar-setup-sadtalker`
+vendor/
+
+# Per-engine virtualenvs (~1.4GB), created by the same make targets
+.avatar-venv/
+.sadtalker-venv/
+
+# Face photos are personal — never publish someone's likeness. Bring your own.
+assets/
+
+.DS_Store

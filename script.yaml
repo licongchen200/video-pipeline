@@ -1,0 +1,96 @@
+# The entire video, as data. Nothing else in this repo holds state.
+# Edit this file, re-run `make`, get a new MP4. Every stage is a pure
+# function of what's below (plus a content-hash cache), so changing one
+# scene re-synthesizes and re-renders only that scene.
+
+title: Stripe Checkout in 30 Seconds
+voice: af_heart # kokoro voice id (af_heart, af_bella, am_michael, bf_emma, ...)
+speed: 1.05 # 1.0 = natural; nudge up to fit a hard time budget
+fps: 30
+width: 1920
+height: 1080
+captions: true # burn the narration line into each frame; override per-scene with `captions: false`
+scene_pad_sec: 0.35 # silence held after each narration line, so cuts don't clip
+
+# Lip-synced talking-head avatar, bottom-right. Add `avatar: false` on a
+# scene (e.g. a title/outro card) to hide it just there.
+avatar:
+  enabled: true
+  engine: sadtalker        # wav2lip (~20s total, visible mouth-patch) | sadtalker (~30min total, much more convincing)
+  face: assets/w1.jpg
+  position: bottom-right   # bottom-right | bottom-left | top-right | top-left
+  size: 289                # px, diameter of the circular cutout
+  margin: 40               # px from the frame edge — explicit, closer to the corner than the caption-aware default
+
+scenes:
+  - id: hook
+    narration: Taking payments with Stripe Checkout is three steps.
+    visual:
+      type: title
+      text: Stripe Checkout
+      subtitle: in 30 seconds
+
+  - id: session
+    narration:
+      One. On your server, create a Checkout Session with the price and
+      quantity.
+    visual:
+      type: code
+      label: server.js
+      step: "1"
+      lang: js
+      code: |
+        const session = await stripe.checkout.sessions.create({
+          mode: 'payment',
+          line_items: [{ price: 'price_1234', quantity: 1 }],
+          success_url: 'https://you.app/done',
+          cancel_url:  'https://you.app/cart',
+        });
+
+  - id: redirect
+    narration:
+      Two. Send the customer to the session URL. Stripe hosts the entire
+      payment page.
+    visual:
+      type: code
+      label: client.js
+      step: "2"
+      lang: js
+      code: |
+        res.redirect(303, session.url);
+
+        // Card fields, 3D Secure, Apple Pay, receipts,
+        // and PCI scope — all handled by Stripe.
+
+  - id: webhook
+    narration:
+      Three. Listen for the checkout session completed webhook, and fulfill
+      the order there.
+    visual:
+      type: code
+      label: webhook.js
+      step: "3"
+      lang: js
+      code: |
+        if (event.type === 'checkout.session.completed') {
+          await fulfill(event.data.object);
+        }
+
+  - id: test
+    narration:
+      Test it with card four two four two, four two four two, and any future
+      date.
+    visual:
+      type: steps
+      heading: Test card
+      items:
+        - 4242 4242 4242 4242
+        - Any future expiry · Any CVC
+        - stripe listen --forward-to localhost:3000
+
+  - id: outro
+    narration: That's it. You're taking payments.
+    visual:
+      type: title
+      text: Payments live.
+      subtitle: stripe.com/docs/checkout
