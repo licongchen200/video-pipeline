@@ -157,9 +157,11 @@ Marked with `ponytail:` comments in the source where they touch code.
 
 ## Known ceilings
 
-- **macOS only** — hardcoded Chrome path, and the kokoro venv next door.
-- **Reuses `webapp-recorder`'s venv and models** (`tts.py`), to avoid a second
-  350 MB download. Repoint `RECORDER`/`MODEL`/`VOICES` to decouple.
+- **macOS only** — hardcoded Chrome path.
+- **Self-contained by default.** `make setup` builds this project's own venv
+  and fetches its own kokoro weights into `models/`, so a fresh clone needs
+  nothing beside it. `KOKORO_MODEL_DIR` points at an existing copy (e.g.
+  webapp-recorder's `tts-models/`) when you'd rather not store them twice.
 - **The syntax highlighter is three regex alternatives**, not a lexer. Comments,
   single-quoted strings, and a keyword list. It is correct on the cases that
   broke it once (URLs inside strings; spans corrupting each other) and

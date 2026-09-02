@@ -29,13 +29,22 @@ See [ARCHITECTURE.md](ARCHITECTURE.md) for why it's built this way, and
 
 ## Requirements
 
-Already satisfied on this machine:
+```bash
+brew install ffmpeg python@3.13   # ffprobe drives every duration measurement
+make setup                        # venv + ~350MB of kokoro TTS weights
+make                              # build the example video
+```
 
-- **ffmpeg / ffprobe** — `brew install ffmpeg`
-- **Google Chrome** — the renderer, at the standard `/Applications` path
-- **kokoro-onnx + models** — reused from `../webapp-recorder` (its
-  `.tts-venv-kokoro` venv and `tts-models/`). That venv is the interpreter this
-  project runs under; `make` handles it.
+Also needs **Google Chrome** at the standard `/Applications` path — it's the
+renderer.
+
+Already have [webapp-recorder](https://github.com/licongchen200/webapp-recorder)
+checked out? Its `tts-models/` holds the identical kokoro pair, so you can skip
+that download:
+
+```bash
+KOKORO_MODEL_DIR=../webapp-recorder/tts-models make
+```
 
 ## Writing a script
 
@@ -124,8 +133,9 @@ make VIDEO=script.draft.yaml
 ```
 
 Reads `OPENROUTER_API_KEY` / `OPENROUTER_MODEL` from the environment, falling
-back to `../webapp-recorder/.env` if present — so `OPENROUTER_API_KEY=sk-... make draft ...`
-works standalone.
+back to this project's own `.env` (see `.env.example`) — so
+`OPENROUTER_API_KEY=sk-... make draft ...` works with no file at all. It's the
+only stage that needs a key; everything else runs fully local.
 It writes a **draft** and never overwrites an existing script — read and edit
 it before building. This is the only non-deterministic stage in the repo, and
 the only one worth keeping a human in.

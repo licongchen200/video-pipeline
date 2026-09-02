@@ -75,4 +75,44 @@ page = html({"narration": "x", "visual": {"type": "title", "text": "T"}},
             {"width": 1920, "height": 1080, **right_cfg})
 assert "padding:0 420px 54px 200px" in page, page[:400]
 
+from subtitles import build_cues, format_timestamp, to_srt, to_vtt  # noqa: E402
+
+# SRT uses a comma before milliseconds, WebVTT a period — mixing them up
+# produces a file players silently ignore.
+assert format_timestamp(0) == "00:00:00,000"
+assert format_timestamp(3.3) == "00:00:03,300"
+assert format_timestamp(3.3, ".") == "00:00:03.300"
+assert format_timestamp(61.5) == "00:01:01,500"
+assert format_timestamp(3661.25) == "01:01:01,250"
+assert format_timestamp(-1) == "00:00:00,000", "negative clamps, never wraps"
+# Rounding must carry into seconds, not print 999.5ms as ",1000"
+assert format_timestamp(1.9996) == "00:00:02,000"
+
+_scenes = [
+    {"narration": "First line."},
+    {"narration": "Second  line."},          # collapses whitespace
+    {"narration": "", "id": "silent"},        # no cue for a silent scene
+    {"narration": "Fourth line.", "captions": False},  # still gets a cue
+]
+_audio = [{"sec": 2.0}, {"sec": 3.0}, {"sec": 1.0}, {"sec": 2.5}]
+_cues = build_cues(_scenes, _audio, 0.5)
+
+assert len(_cues) == 3, _cues
+# Cue ends at the end of speech, not the end of the padded scene.
+assert _cues[0] == {"start": 0.0, "end": 2.0, "text": "First line."}, _cues[0]
+# Next scene starts after the previous scene's speech *and* its pad.
+assert _cues[1]["start"] == 2.5, _cues[1]
+assert _cues[1]["text"] == "Second line."
+# The silent scene consumes its own duration AND its pad, even though it
+# produces no cue: 2.5 + 3.0 + 0.5 (scene 1) + 1.0 + 0.5 (scene 2) = 7.5.
+assert _cues[2]["start"] == 7.5, _cues[2]
+# captions:false suppresses the burned-in text, never the accessibility track.
+assert _cues[2]["text"] == "Fourth line."
+
+_srt = to_srt(_cues)
+assert _srt.startswith("1\n00:00:00,000 --> 00:00:02,000\nFirst line."), _srt[:80]
+assert "\n3\n" in _srt, "cues are numbered from 1, consecutively"
+assert to_vtt(_cues).startswith("WEBVTT\n"), "a VTT without its header is invalid"
+assert "-->" in to_vtt(_cues) and "," not in to_vtt(_cues).split("-->")[0][-12:]
+
 print("ok")

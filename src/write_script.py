@@ -10,8 +10,8 @@ the runtime and ~100% of whether the video is worth watching.
 
 Never overwrites an existing script — writes script.draft.yaml by default.
 
-Credentials come from webapp-recorder/.env (OPENROUTER_API_KEY,
-OPENROUTER_MODEL). stdlib only; no SDK needed for one POST.
+Credentials come from the environment, falling back to this project's .env
+(OPENROUTER_API_KEY, OPENROUTER_MODEL). stdlib only; no SDK for one POST.
 """
 import argparse
 import json
@@ -25,7 +25,9 @@ from pathlib import Path
 import yaml
 
 ROOT = Path(__file__).resolve().parents[1]
-ENV_FILE = ROOT.parent / "webapp-recorder" / ".env"
+# This project's own .env (see .env.example). The environment always wins,
+# so `OPENROUTER_API_KEY=... make draft` works without any file at all.
+ENV_FILE = ROOT / ".env"
 API = "https://openrouter.ai/api/v1/chat/completions"
 WORDS_PER_SEC = 2.6  # measured against kokoro af_heart at speed 1.05
 

@@ -8,9 +8,16 @@ __pycache__/
 # `make avatar-setup` / `make avatar-setup-sadtalker`
 vendor/
 
-# Per-engine virtualenvs (~1.4GB), created by the same make targets
+# Virtualenvs, created by `make setup` / the avatar setup targets (~1.4GB)
+.venv/
 .avatar-venv/
 .sadtalker-venv/
+
+# Kokoro TTS weights (~350MB), fetched by `make setup`
+models/
+
+# Only needed for `make draft`; .env.example is the tracked template
+.env
 
 # Face photos are personal — never publish someone's likeness. Bring your own.
 assets/

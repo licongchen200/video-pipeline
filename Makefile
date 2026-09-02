@@ -1,9 +1,26 @@
-# The kokoro venv next door is the interpreter: it has kokoro-onnx,
-# soundfile and pyyaml. Nothing here needs a venv of its own.
-PY := ../webapp-recorder/.tts-venv-kokoro/bin/python3
+# kokoro-onnx has no Python 3.14 wheels yet, hence the pinned 3.13.
+PYTHON ?= python3.13
+PY := .venv/bin/python3
 VIDEO ?= script.yaml
 
+# One-time: the venv and the ~350MB kokoro model pair this project needs to
+# run at all. If you already have webapp-recorder checked out next door, its
+# tts-models/ holds the identical files — skip the download with:
+#   KOKORO_MODEL_DIR=../webapp-recorder/tts-models make
+setup:
+	command -v $(PYTHON) >/dev/null || { echo "need $(PYTHON) — brew install python@3.13"; exit 1; }
+	$(PYTHON) -m venv .venv
+	$(PY) -m pip install --quiet --upgrade pip
+	$(PY) -m pip install --quiet pyyaml soundfile 'git+https://github.com/thewh1teagle/kokoro-onnx.git@main'
+	mkdir -p models
+	curl -sL -o models/kokoro-v1.0.onnx \
+		https://github.com/thewh1teagle/kokoro-onnx/releases/download/model-files-v1.1/kokoro-v1.0.onnx
+	curl -sL -o models/voices-v1.0.bin \
+		https://github.com/thewh1teagle/kokoro-onnx/releases/download/model-files-v1.1/voices-v1.0.bin
+	@echo "ready — run \`make\`"
+
 build:
+	@test -x $(PY) || { echo "no .venv — run \`make setup\` first"; exit 1; }
 	@$(PY) src/build.py $(VIDEO)
 
 open: build
@@ -56,10 +73,11 @@ avatar-setup-sadtalker:
 	python3.11 src/patch_sadtalker.py
 	@echo "SadTalker ready — set avatar.engine: sadtalker in script.yaml"
 
+# Pure logic — no models, no venv needed, so any python3 will do.
 test:
-	@cd src && ../$(PY) test_render.py
+	@cd src && python3 test_render.py
 
 clean:
 	rm -rf build out
 
-.PHONY: build open draft test clean
+.PHONY: setup build open draft test clean avatar-setup avatar-setup-sadtalker

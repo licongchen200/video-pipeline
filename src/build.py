@@ -20,6 +20,7 @@ sys.path.insert(0, str(Path(__file__).parent))
 import assemble as assemble_mod  # noqa: E402
 import avatar as avatar_mod  # noqa: E402
 import render as render_mod  # noqa: E402
+import subtitles as subtitles_mod  # noqa: E402
 import tts as tts_mod  # noqa: E402
 
 import yaml  # noqa: E402
@@ -67,6 +68,14 @@ def main():
             avatar_clips[i] = clip
 
     total = assemble_mod.assemble(pngs, audio, cfg, build / "clips", out, avatar_clips)
+
+    # Closed captions: a sidecar pair to upload alongside the video, plus a
+    # track inside it so any player can toggle them.
+    cues = subtitles_mod.build_cues(scenes, audio, cfg["scene_pad_sec"])
+    if cues:
+        srt = subtitles_mod.write(cues, out)
+        assemble_mod.embed_subtitles(out, srt)
+        print(f"  subtitles: {len(cues)} cues -> {srt.name} + .vtt, embedded")
 
     print(f"\n{out.relative_to(Path.cwd()) if out.is_relative_to(Path.cwd()) else out}"
           f"  {total:.1f}s  {out.stat().st_size / 1e6:.1f} MB")

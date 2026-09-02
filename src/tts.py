@@ -8,15 +8,32 @@ Cached by sha256(text, voice, speed), so editing one line of script.yaml
 re-synthesizes exactly that line.
 """
 import hashlib
+import os
 import subprocess
 import sys
 from pathlib import Path
 
-# ponytail: reuses the sibling project's kokoro models rather than a second
-# 350MB download. Repoint these two if the projects ever separate.
-RECORDER = Path(__file__).resolve().parents[2] / "webapp-recorder"
-MODEL = RECORDER / "tts-models" / "kokoro-v1.0.onnx"
-VOICES = RECORDER / "tts-models" / "voices-v1.0.bin"
+ROOT = Path(__file__).resolve().parents[1]
+
+
+def _model_dir():
+    """Where the kokoro model and voices live.
+
+    This project's own `models/` by default, so a fresh clone works with
+    nothing beside it. KOKORO_MODEL_DIR overrides — useful because the
+    sibling webapp-recorder ships the same ~350MB pair, and pointing at an
+    existing copy beats downloading it twice:
+
+        KOKORO_MODEL_DIR=../webapp-recorder/tts-models make
+    """
+    override = os.environ.get("KOKORO_MODEL_DIR")
+    if override:
+        return Path(override).expanduser().resolve()
+    return ROOT / "models"
+
+
+MODEL_NAME = "kokoro-v1.0.onnx"
+VOICES_NAME = "voices-v1.0.bin"
 
 
 def duration_sec(path):
@@ -31,8 +48,11 @@ def synthesize(scenes, voice, speed, cache_dir):
     """scenes -> [{"wav": Path, "sec": float}], one per scene, in order."""
     if subprocess.run(["which", "ffprobe"], capture_output=True).returncode:
         sys.exit("missing `ffprobe` — brew install ffmpeg")
-    if not MODEL.exists() or not VOICES.exists():
-        sys.exit(f"kokoro models not found under {MODEL.parent}")
+    model_dir = _model_dir()
+    model, voices = model_dir / MODEL_NAME, model_dir / VOICES_NAME
+    if not model.exists() or not voices.exists():
+        sys.exit(f"kokoro models not found in {model_dir}\n"
+                 f"run `make setup`, or point KOKORO_MODEL_DIR at an existing copy")
 
     cache_dir.mkdir(parents=True, exist_ok=True)
     wavs, todo = [], []
@@ -51,7 +71,7 @@ def synthesize(scenes, voice, speed, cache_dir):
         # cached run should never pay it.
         from kokoro_onnx import Kokoro
         import soundfile as sf
-        kokoro = Kokoro(str(MODEL), str(VOICES))
+        kokoro = Kokoro(str(model), str(voices))
         for text, wav in todo:
             samples, rate = kokoro.create(text, voice=voice, speed=float(speed),
                                           lang="en-us")
