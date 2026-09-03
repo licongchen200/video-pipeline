@@ -44,6 +44,23 @@ def duration_sec(path):
     return float(out.strip())
 
 
+def cache_key(text, voice, speed, model, voices):
+    """Everything that determines the audio, and nothing that doesn't.
+
+    The model is identified by file *size*, deliberately not by path. Its
+    path is not stable — KOKORO_MODEL_DIR, a `models` symlink into another
+    checkout, and a plain `make setup` are three different strings for the
+    same bytes — and a path-keyed cache would miss on all of them. A miss
+    isn't just a re-synthesis either: fresh audio means fresh bytes, and the
+    avatar cache keys on those, so a spurious miss cascades into a full
+    lip-sync re-render. Size changes when the model actually changes, which
+    is the thing worth invalidating on.
+    """
+    fingerprint = f"{model.stat().st_size}:{voices.stat().st_size}"
+    return hashlib.sha256(
+        f"{text}|{voice}|{speed}|{fingerprint}".encode()).hexdigest()[:16]
+
+
 def synthesize(scenes, voice, speed, cache_dir):
     """scenes -> [{"wav": Path, "sec": float}], one per scene, in order."""
     if subprocess.run(["which", "ffprobe"], capture_output=True).returncode:
@@ -58,8 +75,7 @@ def synthesize(scenes, voice, speed, cache_dir):
     wavs, todo = [], []
     for scene in scenes:
         text = " ".join(scene["narration"].split())
-        key = hashlib.sha256(f"{text}|{voice}|{speed}".encode()).hexdigest()[:16]
-        wav = cache_dir / f"{key}.wav"
+        wav = cache_dir / f"{cache_key(text, voice, speed, model, voices)}.wav"
         if not wav.exists():
             todo.append((text, wav))
         wavs.append(wav)
