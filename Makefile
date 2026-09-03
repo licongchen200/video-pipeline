@@ -3,6 +3,10 @@ PYTHON ?= python3.13
 PY := .venv/bin/python3
 VIDEO ?= script.yaml
 
+# `setup` is defined first below but must not become the default goal —
+# plain `make` builds the video.
+.DEFAULT_GOAL := build
+
 # One-time: the venv and the ~350MB kokoro model pair this project needs to
 # run at all. If you already have webapp-recorder checked out next door, its
 # tts-models/ holds the identical files — skip the download with:
@@ -13,9 +17,12 @@ setup:
 	$(PY) -m pip install --quiet --upgrade pip
 	$(PY) -m pip install --quiet pyyaml soundfile 'git+https://github.com/thewh1teagle/kokoro-onnx.git@main'
 	mkdir -p models
-	curl -sL -o models/kokoro-v1.0.onnx \
+	# Skip what's already there, so re-running setup is cheap and — more
+	# importantly — safe when models/ is a symlink to another checkout's
+	# copy: an unconditional `curl -o` would overwrite through the link.
+	@test -s models/kokoro-v1.0.onnx || curl -# -L -o models/kokoro-v1.0.onnx \
 		https://github.com/thewh1teagle/kokoro-onnx/releases/download/model-files-v1.1/kokoro-v1.0.onnx
-	curl -sL -o models/voices-v1.0.bin \
+	@test -s models/voices-v1.0.bin || curl -# -L -o models/voices-v1.0.bin \
 		https://github.com/thewh1teagle/kokoro-onnx/releases/download/model-files-v1.1/voices-v1.0.bin
 	@echo "ready — run \`make\`"
 
