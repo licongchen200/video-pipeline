@@ -115,4 +115,42 @@ assert "\n3\n" in _srt, "cues are numbered from 1, consecutively"
 assert to_vtt(_cues).startswith("WEBVTT\n"), "a VTT without its header is invalid"
 assert "-->" in to_vtt(_cues) and "," not in to_vtt(_cues).split("-->")[0][-12:]
 
+import os  # noqa: E402
+import tempfile  # noqa: E402
+from pathlib import Path  # noqa: E402
+
+from tts import cache_key  # noqa: E402
+
+# The TTS cache key must cover everything that changes the audio and nothing
+# that doesn't. Getting the second half wrong is expensive: a spurious miss
+# re-synthesizes, which produces fresh bytes, which misses the avatar cache
+# too — a ~30 minute lip-sync re-render for no reason.
+with tempfile.TemporaryDirectory() as _d:
+    _d = Path(_d)
+    _model, _voices = _d / "m.onnx", _d / "v.bin"
+    _model.write_bytes(b"x" * 100)
+    _voices.write_bytes(b"y" * 50)
+    _base = cache_key("hello", "af_heart", 1.0, _model, _voices)
+
+    assert _base == cache_key("hello", "af_heart", 1.0, _model, _voices), "stable"
+    assert _base != cache_key("hi", "af_heart", 1.0, _model, _voices), "text matters"
+    assert _base != cache_key("hello", "af_bella", 1.0, _model, _voices), "voice matters"
+    assert _base != cache_key("hello", "af_heart", 1.1, _model, _voices), "speed matters"
+
+    # Same bytes reached by another path — a symlink, or KOKORO_MODEL_DIR
+    # pointing at a sibling checkout — must NOT invalidate.
+    _link_dir = _d / "link"
+    _link_dir.mkdir()
+    os.symlink(_model, _link_dir / "m.onnx")
+    os.symlink(_voices, _link_dir / "v.bin")
+    assert _base == cache_key("hello", "af_heart", 1.0,
+                              _link_dir / "m.onnx", _link_dir / "v.bin"), \
+        "a different path to identical models must reuse the cache"
+
+    # A genuinely different model must invalidate.
+    _other = _d / "other.onnx"
+    _other.write_bytes(b"x" * 101)
+    assert _base != cache_key("hello", "af_heart", 1.0, _other, _voices), \
+        "a different model must not serve audio made by the old one"
+
 print("ok")
