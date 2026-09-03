@@ -13,8 +13,10 @@ vendor/
 .avatar-venv/
 .sadtalker-venv/
 
-# Kokoro TTS weights (~350MB), fetched by `make setup`
-models/
+# Kokoro TTS weights (~350MB), fetched by `make setup`. No trailing slash:
+# a symlink to another checkout's copy is a file, and `models/` would only
+# match a real directory — leaving the link committable by accident.
+models
 
 # Only needed for `make draft`; .env.example is the tracked template
 .env
