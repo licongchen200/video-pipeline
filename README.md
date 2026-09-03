@@ -124,6 +124,29 @@ discipline as everything else, so editing narration re-syncs only the
 affected scene. Runs on CPU (this repo predates Apple's MPS backend); a few
 seconds of audio takes well under a minute to sync on an M-series chip.
 
+### Touching up an avatar photo: `shrink_eyes.py`
+
+A small, controllable warp for one specific fix — eyes that read as too big
+in a stylized/illustrated portrait. Always writes a **new** file; your
+source photo is never modified.
+
+```bash
+.sadtalker-venv/bin/python3 src/shrink_eyes.py assets/me.jpg assets/me-v2.jpg
+#                                                             ^ new file, defaults to strength 0.15
+```
+
+It detects 68 face landmarks and pulls each eye's surrounding pixels inward
+with a falloff that reaches exactly zero at the edge of the affected region
+— that's what makes the result blend into the skin/glasses with no visible
+seam, rather than looking like a pasted-in smaller eye. `strength` (0–1,
+default `0.15`) controls how much: small values read as natural, `0.25+`
+starts looking obviously edited. `pad` (default `2.2`) is the affected
+radius as a multiple of eye width — wider blends further into the
+surrounding face.
+
+Needs the SadTalker venv (`make avatar-setup-sadtalker`) — that's where
+`face_alignment` and opencv already live.
+
 ## Optional: draft a script with an LLM
 
 ```bash
@@ -150,6 +173,7 @@ src/render.py        stage 2 — scene → 1080p png             (HTML + Chrome)
 src/assemble.py      stage 3 — png + wav → mp4               (ffmpeg)
 src/write_script.py  stage 0 — topic → draft yaml (optional) (OpenRouter)
 src/avatar.py         stage 1b — wav + photo → lip-synced clip (optional)   (Wav2Lip)
+src/shrink_eyes.py   avatar photo touch-up, never edits the source (optional)
 src/test_render.py   self-check for the syntax highlighter
 vendor/Wav2Lip/      cloned by `make avatar-setup` — not our code, gitignore it
 .avatar-venv/         Wav2Lip's python deps — reuses global torch/opencv via --system-site-packages
